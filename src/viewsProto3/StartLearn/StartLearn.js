@@ -96,14 +96,12 @@ function StartLearn() {
   const [content_id, set_content_id] = useState(0);
 
   const [load_cnt, set_load_cnt] = useState(0);
-  // const [content_list, setContent_list] = useState(null);
+  const [content_list, setContent_list] = useState(null);
 
   useEffect(() => {
-    // getfromurl();
     if (load_cnt == 0) {
-      let count_array = 0;
-      const content_list = getContentList();
 
+      const content_list = getContentList();
       let tempContent = [];
       const content_count = Object.keys(content_list).length;
       const content_keys = Object.keys(content_list);
@@ -117,34 +115,109 @@ function StartLearn() {
           });
         }
       });
+
+
       if (tempContent.length > 0) {
-        let getitem = localStorage.getItem('content_random_id')
-          ? localStorage.getItem('content_random_id')
-          : 0;
-        if (trysame !== 'yes') {
-          let old_getitem = getitem;
-          while (old_getitem == getitem) {
-            getitem = randomIntFromInterval(0, Number(tempContent.length - 1));
-          }
-        }
-        localStorage.setItem('trysame', 'no');
+        let getitem = parseInt(localStorage.getItem('content_random_id')) === -1 ? localStorage.getItem('content_random_id') : 0;
+        randomIntFromInterval(Number(tempContent.length - 1)).then(async (returnElementIndex) => {
+          getitem = returnElementIndex;
+          console.log(getitem);
+          await checkitem();
+        })
+
+        async function checkitem() {
+          const content_list = getContentList();
+          let tempContent = [];
+          const content_count = Object.keys(content_list).length;
+          const content_keys = Object.keys(content_list);
+          content_keys.forEach(key => {
+            if (
+              content_list[key].type === sel_level &&
+              content_list[key]?.[sel_lang]
+            ) {
+              tempContent.push({
+                content: content_list[key],
+              });
+            }
+        });
+
         localStorage.setItem('content_random_id', getitem);
         set_content(tempContent[getitem].content);
-
         set_content_id(getitem);
+
         localStorage.setItem(
           'contentText',
           tempContent[getitem].content[localStorage.getItem('apphomelang')].text
         );
+
+        }
       }
+
       scroll_to_top('smooth');
       set_load_cnt(load_cnt => Number(load_cnt + 1));
+      console.log(load_cnt);
     }
   }, [load_cnt]);
-  function randomIntFromInterval(min, max) {
-    // min and max included
-    return Math.floor(Math.random() * (max - min + 1) + min);
+
+  async function randomIntFromInterval(max) {
+
+    if (parseInt(localStorage.getItem('content_random_id')) === max) {
+      let pageno = parseInt(localStorage.getItem('pageno')) + 1;
+      const response = await fetch(`https://all-content-respository-backend.onrender.com/v1/WordSentence/pagination?type=${sel_level}&page=${pageno}&limit=${process.env.REACT_APP_CONTENT_SIZE}`, {
+        method: "get",
+        headers: {
+          'ngrok-skip-browser-warning': 6124
+        }
+      }).then((res) => res.json())
+      .then(async (res) => {
+        const dataFromAPI = res;
+        let contentdata = []
+        dataFromAPI.data.forEach((element, index) => {
+            let contentObj = {};
+            contentObj.title = element.title
+            contentObj.type = element.type
+            contentObj.ta = element.data[0].ta
+            contentObj.en = element.data[0].en
+            contentObj.image = element.image
+            contentdata[index] = contentObj;
+        });
+
+        if (contentdata.length == 0) {
+          const response = await fetch(`https://all-content-respository-backend.onrender.com/v1/WordSentence/pagination?type=${sel_level}&page=1&limit=${process.env.REACT_APP_CONTENT_SIZE}`, {
+            method: "get",
+            headers: {
+              'ngrok-skip-browser-warning': 6124
+            }
+          }).then((res) => res.json())
+          .then((res) => {
+            const dataFromAPI = res;
+            let contentdata = []
+          dataFromAPI.data.forEach((element, index) => {
+              let contentObj = {};
+              contentObj.title = element.title
+              contentObj.type = element.type
+              contentObj.ta = element.data[0].ta
+              contentObj.en = element.data[0].en
+              contentObj.image = element.image
+              contentdata[index] = contentObj;
+          });
+          localStorage.setItem('contents', JSON.stringify(contentdata));
+          localStorage.setItem('content_random_id', 0);
+          localStorage.setItem('pageno', 1);
+        })
+        }else{
+          localStorage.setItem('contents', JSON.stringify(contentdata));
+          localStorage.setItem('content_random_id', 0);
+          localStorage.setItem('pageno', pageno);
+        }
+        return 0;
+      })
+      return 0;
+      } else {
+              return parseInt(localStorage.getItem('content_random_id')) + 1;
+      }
   }
+
   const [recordedAudio, setRecordedAudio] = useState('');
   const [voiceText, setVoiceText] = useState('');
   useEffect(() => {
@@ -242,10 +315,10 @@ function StartLearn() {
                   setRecordedAudio={setRecordedAudio}
                   _audio={{ isAudioPlay: e => setIsAudioPlay(e) }}
                   flag={true}
-                  
+
                   />
                   {isAudioPlay === 'recording'? <h4 className="text-speak m-0">Stop</h4>:<h4 className="text-speak m-0">Speak</h4>}
-                
+
                   </VStack>
               </HStack>
               {isAudioPlay !== 'recording' && (
@@ -254,13 +327,13 @@ function StartLearn() {
                     src={refresh}
                     className="home_icon"
                     style={{ height: '72px', width: '72px' }}
-                    
+
                     alt='try_new_btn'
-                   
+
                     onClick={newSentence}
                   />
                   <h4 className="text-speak m-0">Try new</h4>
-                  
+
                 </VStack>
               )}
             </VStack>
@@ -272,10 +345,18 @@ function StartLearn() {
         ) : (
           <>
             <div className="">
-              <div className="row">
-                <div className="col s12 m2 l3"></div>
-                <div className="col s12 m8 l6 main_layout">
-                  <h1>Loading...</h1>
+                <div className="row">
+                  <div className="col s12 m2 l3"></div>
+
+                  <div className="col s12 m8 l6 main_layout">
+                                    <NewTopHomeNextBar
+                  nextlink={''}
+                  ishomeback={true}
+                  isHideNavigation={true}
+                    />
+                      <>
+                        <h1>Loading....</h1>
+                      </>
                 </div>
               </div>
             </div>
