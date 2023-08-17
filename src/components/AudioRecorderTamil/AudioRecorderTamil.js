@@ -220,7 +220,7 @@ function Mic({
 
         if (process.env.REACT_APP_CAPTURE_AUDIO === 'true') {
 
-          var audioFileName = `${process.env.REACT_APP_AWS_s3_BUCKET_FOLDER_NAME}/${localStorage.getItem('contentSessionId')}-${Date.now()}.wav`;
+          var audioFileName = `${process.env.REACT_APP_CHANNEL}/${localStorage.getItem('contentSessionId')}-${Date.now()}-${parseInt(localStorage.getItem('contentSessionId'))+1}.wav`;
 
           const command = new PutObjectCommand({
             Bucket: process.env.REACT_APP_AWS_s3_BUCKET_NAME,
